@@ -2,7 +2,7 @@
 
 [![language](https://img.shields.io/badge/C%23-7.3-green.svg)](https://docs.microsoft.com/en-us/dotnet/csharp)
 
-Artificial intelligence in Unity using graphs and the pathfinding LRTA* algorithm.
+Artificial intelligence in Unity using graphs and the pathfinding RTA* algorithm.
 
 ## Editor
 ![](Assets/Screenshots/editor.png)
