@@ -53,7 +53,7 @@ namespace NodeGraph
 		{
 			DrawGrid(20, 0.2f, Color.gray);
 			DrawGrid(100, 0.4f, Color.gray);
-			ProcessEvents(Event.current);
+			ProcessEvents();
 
 			if (_graph == null)
 			{
@@ -136,21 +136,25 @@ namespace NodeGraph
 			Repaint();
 		}
 
-		private void ProcessEvents(Event e)
+		private void ProcessEvents()
 		{
-			switch (e.type)
+			Event currentEvent = Event.current;
+			switch (currentEvent.type)
 			{
 				case EventType.MouseDown:
-					OnMouseDown(e.button, e.mousePosition);
+					OnMouseDown(currentEvent.button, currentEvent.mousePosition);
 					break;
 				case EventType.MouseUp:
-					OnMouseUp(e.button, e.mousePosition);
+					OnMouseUp(currentEvent.button, currentEvent.mousePosition);
 					break;
 				case EventType.MouseDrag:
-					OnMouseMove(e.mousePosition);
+					OnMouseMove(currentEvent.mousePosition);
 					break;
-				case EventType.KeyUp:
-					if (e.keyCode == KeyCode.Delete && _graph.IsNodeSelected())
+				case EventType.KeyDown:
+					bool isDelete = Application.platform == RuntimePlatform.WindowsEditor
+						? currentEvent.keyCode == KeyCode.Delete
+						: currentEvent.keyCode == KeyCode.Backspace;
+					if (isDelete && _graph.IsNodeSelected())
 					{
 						_graph.RemoveNode(_graph.GetSelectedNode());
 						_graph.Deselect();
@@ -159,9 +163,10 @@ namespace NodeGraph
 					break;
 			}
 
-			if (e.commandName.Equals("ObjectSelectorClosed"))
+			if (currentEvent.commandName.Equals("ObjectSelectorClosed"))
 			{
-				OnGraphLoaded(EditorGUIUtility.GetObjectPickerObject() as EditorGraph);
+				EditorGraph graph = (EditorGraph) EditorGUIUtility.GetObjectPickerObject();
+				OnGraphLoaded(graph);
 				_controlID = -1;
 			}
 		}
@@ -334,6 +339,7 @@ namespace NodeGraph
 								{
 									EditorPinIdentifier selectedPinIdentifier = _graph.GetSelectedElementID();
 									LinkPins(selectedPinIdentifier, node.GetPinIdentifier(j));
+									_graph.RemoveLink(selectedPinIdentifier, node.GetPinIdentifier(j));
 									UpdateGraphCache();
 									break;
 								}
