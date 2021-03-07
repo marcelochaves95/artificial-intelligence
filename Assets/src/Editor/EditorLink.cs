@@ -43,7 +43,7 @@ namespace NodeGraph
     		Rect fromRect = fromNode.GetPinRect(FromPinID);
     		Rect toRect = toNode.GetPinRect(ToPinID);
 
-    		EditorGraphDrawUtils.Line(fromRect.center, toRect.center, Color.black);
+    		EditorGraphDrawUtils.Line(fromRect.center, toRect.center, Color.cyan);
     	}
 
         public override string ToString()
