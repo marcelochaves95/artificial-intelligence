@@ -1,215 +1,218 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class EditorGraph : ScriptableObject {
-
-	public delegate void EditorGraphEvent();
-	public event EditorGraphEvent OnGraphChanged;
-
-	[SerializeField] private List<EditorNode> Nodes;
-	[SerializeField] private List<EditorLink> Links;
-	[SerializeField] public Vector2 EditorViewportOffset = new Vector2();
-	[SerializeField] private int UIDCounter = -1;
-
-	private Dictionary<int, EditorNode> NodeMap;
-	private Dictionary<EditorPinIdentifier, EditorPin> PinMap;
-
-	private EditorPinIdentifier SelectedElement;
-
-	public EditorPinIdentifier GetSelectedElementID()
+namespace NodeGraph
+{
+	[Serializable]
+	public class EditorGraph : ScriptableObject
 	{
-		return SelectedElement;
-	}
+		public Action OnGraphChanged;
 
-	public EditorNode GetSelectedNode()
-	{
-		return GetNodeFromID(SelectedElement.NodeID);
-	}
+		[SerializeField]
+		private List<EditorNode> _nodes;
+		[SerializeField]
+		private List<EditorLink> _links;
+		[SerializeField]
+		public Vector2 _editorViewportOffset = new Vector2();
+		[SerializeField]
+		private int _uniqueNodeIDCounter = -1;
 
-	public void SelectNode(int NodeID)
-	{
-		SelectedElement.NodeID = NodeID;
-		SelectedElement.PinID = -1;
-	}
+		private Dictionary<int, EditorNode> _nodeMap;
+		private Dictionary<EditorPinIdentifier, EditorPin> _pinMap;
 
-	public void SelectPin(EditorPinIdentifier PinIdentifier)
-	{
-		SelectedElement = PinIdentifier;
-	}
+		private EditorPinIdentifier _selectedElement;
 
-	public void Deselect()
-	{
-		SelectedElement.NodeID = -1;
-		SelectedElement.PinID = -1;
-	}
-
-	public int AddNode(EditorNode _Node)
-	{
-		if (Nodes == null)
+		public EditorPinIdentifier GetSelectedElementID()
 		{
-			Nodes = new List<EditorNode>();
-		}
-		if (NodeMap == null)
-		{
-			NodeMap = new Dictionary<int, EditorNode>();
+			return _selectedElement;
 		}
 
-		NodeMap[_Node.ID] = _Node;
-		Nodes.Add(_Node);
-		_Node.OnNodeChanged += NotifyGraphChange;
-		NotifyGraphChange();
-		return _Node.ID;
-	}
-
-	public bool RemoveNode(EditorNode _Node)
-	{
-		if (Nodes == null)
+		public EditorNode GetSelectedNode()
 		{
-			return false;
+			return GetNodeFromID(_selectedElement.NodeID);
 		}
 
-		int NodeID = _Node.ID;
-		bool bSuccess = Nodes.Remove(_Node);
-
-		if (bSuccess)
+		public void SelectNode(int nodeID)
 		{
-			// remove all associated links
-			for (int Index = Links.Count - 1; Index >= 0; --Index)
+			_selectedElement.NodeID = nodeID;
+			_selectedElement.PinID = -1;
+		}
+
+		public void SelectPin(EditorPinIdentifier pinIdentifier)
+		{
+			_selectedElement = pinIdentifier;
+		}
+
+		public void Deselect()
+		{
+			_selectedElement.NodeID = -1;
+			_selectedElement.PinID = -1;
+		}
+
+		public void AddNode(EditorNode node, out int nodeID)
+		{
+			if (_nodes == null)
 			{
-				EditorLink Link = Links[Index];
-				if (Link.NodeID_From == NodeID || Link.NodeID_To == NodeID)
+				_nodes = new List<EditorNode>();
+			}
+
+			if (_nodeMap == null)
+			{
+				_nodeMap = new Dictionary<int, EditorNode>();
+			}
+
+			_nodeMap[node.ID] = node;
+			_nodes.Add(node);
+			node.OnNodeChanged += NotifyGraphChange;
+			NotifyGraphChange();
+			nodeID = node.ID;
+		}
+
+		public bool RemoveNode(EditorNode node)
+		{
+			if (_nodes == null)
+			{
+				return false;
+			}
+
+			int nodeID = node.ID;
+			bool isRemoved = _nodes.Remove(node);
+
+			if (isRemoved)
+			{
+				// Remove all associated links
+				for (int i = _links.Count - 1; i >= 0; --i)
 				{
-					Links.RemoveAt(Index);
+					EditorLink link = _links[i];
+					if (link.FromNodeID == nodeID || link.ToNodeID == nodeID)
+					{
+						_links.RemoveAt(i);
+					}
+				}
+
+				node.OnNodeChanged -= NotifyGraphChange;
+				NotifyGraphChange();
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		public EditorNode GetNodeFromID(int id)
+		{
+			if (_nodeMap == null)
+			{
+				_nodeMap = new Dictionary<int, EditorNode>();
+			}
+			else if (_nodeMap.ContainsKey(id))
+			{
+				return _nodeMap[id];
+			}
+
+			foreach (EditorNode node in _nodes)
+			{
+				if (node.ID == id)
+				{
+					_nodeMap[id] = node;
+					return node;
 				}
 			}
 
-			_Node.OnNodeChanged -= NotifyGraphChange;
-			NotifyGraphChange();
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	public EditorNode GetNodeFromID(int ID)
-	{
-		if (NodeMap == null)
-		{
-			NodeMap = new Dictionary<int, EditorNode>();
-		}
-		else if (NodeMap.ContainsKey(ID))
-		{
-			return NodeMap[ID];
+			Debug.LogError($"Trying to get Node with invalid ID {id}.");
+			return null;
 		}
 
-		foreach (EditorNode _Node in Nodes)
+		public EditorPin GetPinFromID(EditorPinIdentifier pinId)
 		{
-			if (_Node.ID == ID)
+			if (_pinMap == null)
 			{
-				NodeMap[ID] = _Node;
-				return _Node;
+				_pinMap = new Dictionary<EditorPinIdentifier, EditorPin>();
+			}
+			else if (_pinMap.ContainsKey(pinId))
+			{
+				return _pinMap[pinId];
+			}
+
+			EditorNode node = GetNodeFromID(pinId.NodeID);
+			if (node != null)
+			{
+				EditorPin pin = node.GetPin(pinId.PinID);
+				_pinMap[pinId] = pin;
+				return pin;
+			}
+
+			return null;
+		}
+
+		public EditorNode CreateFromFunction(Type type, string name, bool hasOutput = false, bool hasInput = false)
+		{
+			return EditorNode.CreateFromFunction(this, type, name, hasInput, hasOutput);
+		}
+
+		public void LinkPins(EditorPinIdentifier lhsPin, EditorPinIdentifier rhsPin)
+		{
+			if (_links == null)
+			{
+				_links = new List<EditorLink>();
+			}
+
+			EditorLink newLink = new EditorLink(lhsPin, rhsPin);
+			_links.Add(newLink);
+			NotifyGraphChange();
+		}
+
+		public List<EditorNode> GetNodeList()
+		{
+			if (_nodes == null)
+			{
+				_nodes = new List<EditorNode>();
+			}
+			return _nodes;
+		}
+
+		public List<EditorLink> GetLinkList()
+		{
+			if (_links == null)
+			{
+				_links = new List<EditorLink>();
+			}
+			return _links;
+		}
+
+		public void NotifyGraphChange()
+		{
+			OnGraphChanged?.Invoke();
+		}
+
+		public void RenderGraph()
+		{
+			foreach (EditorNode node in _nodes)
+			{
+				node.RenderNode(this, IsNodeSelected() && node == GetNodeFromID(_selectedElement.NodeID));
+			}
+
+			foreach (EditorLink link in _links)
+			{
+				link.RenderLink(this);
 			}
 		}
 
-		Debug.LogError("Trying to get Node with invalid ID " + ID + ".");
-		return null;
-	}
-
-	public EditorPin GetPinFromID(EditorPinIdentifier PinIdentifier)
-	{
-		if (PinMap == null)
+		public bool IsPinSelected()
 		{
-			PinMap = new Dictionary<EditorPinIdentifier, EditorPin>();
-		}
-		else if (PinMap.ContainsKey(PinIdentifier))
-		{
-			return PinMap[PinIdentifier];
+			return _selectedElement.PinID != -1;
 		}
 
-		EditorNode _Node = GetNodeFromID(PinIdentifier.NodeID);
-		if (_Node != null)
+		public bool IsNodeSelected()
 		{
-			EditorPin Pin = _Node.GetPin(PinIdentifier.PinID);
-			PinMap[PinIdentifier] = Pin;
-			return Pin;
+			return _selectedElement.NodeID != -1 && _selectedElement.PinID == -1;
 		}
 
-		return null;
-	}
-
-	public EditorNode CreateFromFunction(System.Type ClassType, string Methodname, bool bHasOutput = false, bool bHasInput = false)
-	{
-		return EditorNode.CreateFromFunction(this, ClassType, Methodname, bHasInput, bHasOutput);
-	}
-
-	public void LinkPins(EditorPinIdentifier LHSPin, EditorPinIdentifier RHSPin)
-	{
-		if (Links == null)
+		public int GenerateUniqueNodeID()
 		{
-			Links = new List<EditorLink>();
-		}
-
-		EditorLink NewLink = new EditorLink(LHSPin, RHSPin);
-		Links.Add(NewLink);
-		NotifyGraphChange();
-	}
-
-	public List<EditorNode> GetNodeList()
-	{
-		if (Nodes == null)
-		{
-			Nodes = new List<EditorNode>();
-		}
-		return Nodes;
-	}
-
-	public List<EditorLink> GetLinkList()
-	{
-		if (Links == null)
-		{
-			Links = new List<EditorLink>();
-		}
-		return Links;
-	}
-
-	public void NotifyGraphChange()
-	{
-		if (OnGraphChanged != null)
-		{
-			OnGraphChanged();
+			return ++_uniqueNodeIDCounter;
 		}
 	}
-
-	public void RenderGraph()
-	{
-		foreach (EditorNode Node in Nodes)
-		{
-			Node.RenderNode(this, IsNodeSelected() && Node == GetNodeFromID(SelectedElement.NodeID));
-		}
-
-		foreach (EditorLink Link in Links)
-		{
-			Link.RenderLink(this);
-		}
-	}
-
-	public bool IsPinSelected()
-	{
-		return SelectedElement.PinID != -1;
-	}
-
-	public bool IsNodeSelected()
-	{
-		return SelectedElement.NodeID != -1 && SelectedElement.PinID == -1;
-	}
-
-	public int GenerateUniqueNodeID()
-	{
-		return ++UIDCounter;
-	}
-
 }
