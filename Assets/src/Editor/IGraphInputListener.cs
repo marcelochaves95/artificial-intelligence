@@ -1,12 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public interface IGraphInputListener
+namespace NodeGraph
 {
-
-	void OnMouseDown(int button, Vector2 mousePos);
-	void OnMouseUp(int button, Vector2 mousePos);
-	void OnMouseMove(Vector2 mousePos);
-
+	public interface IGraphInputListener
+	{
+		void OnMouseDown(int button, Vector2 mousePos);
+		void OnMouseUp(int button, Vector2 mousePos);
+		void OnMouseMove(Vector2 mousePos);
+	}
 }
