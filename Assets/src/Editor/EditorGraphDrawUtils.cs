@@ -1,21 +1,22 @@
-﻿using UnityEngine;
-using UnityEditor;
+﻿using UnityEditor;
+using UnityEngine;
 
-public class EditorGraphDrawUtils
+namespace NodeGraph
 {
-
-	public static void DrawRect(Vector2 TopLeft, Vector2 BottomRight, Color Fill)
+	public class EditorGraphDrawUtils
 	{
-		EditorGUI.DrawRect(new Rect(TopLeft, BottomRight - TopLeft), Fill);
-	}
+		public static void DrawRect(Vector2 topLeft, Vector2 bottomRight, Color color)
+		{
+			EditorGUI.DrawRect(new Rect(topLeft, bottomRight - topLeft), color);
+		}
 
-	public static void Line(Vector2 From, Vector2 To, Color InColour, float Thickness = 5.0f)
-	{
-		Handles.BeginGUI();
-		Vector3 FromTangent = new Vector3(0.5f * (From.x + To.x), From.y);
-		Vector3 ToTangent = new Vector3(0.5f * (From.x + To.x), To.y);
-		Handles.DrawBezier(From, To, FromTangent, ToTangent, InColour, null, Thickness);
-		Handles.EndGUI();
+		public static void Line(Vector2 from, Vector2 to, Color color, float thickness = 5.0f)
+		{
+			Handles.BeginGUI();
+			Vector3 fromTangent = new Vector3(0.5f * (from.x + to.x), from.y);
+			Vector3 toTangent = new Vector3(0.5f * (from.x + to.x), to.y);
+			Handles.DrawBezier(from, to, fromTangent, toTangent, color, null, thickness);
+			Handles.EndGUI();
+		}
 	}
-
 }
