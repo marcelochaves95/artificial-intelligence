@@ -1,75 +1,54 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class EditorLink
+namespace NodeGraph
 {
+    [Serializable]
+    public class EditorLink
+    {
+	    [SerializeField]
+	    private int _fromNodeID;
+    	[SerializeField]
+        private int _fromPinID;
+    	[SerializeField]
+        private int _toNodeID;
+    	[SerializeField]
+        private int _toPinID;
 
-	[SerializeField] private int FromNodeID;
-	[SerializeField] private int FromPinID;
-	[SerializeField] private int ToNodeID;
-	[SerializeField] private int ToPinID;
+        public int FromNodeID => _fromNodeID;
+        public int ToNodeID => _toNodeID;
+        public int FromPinID => _fromPinID;
+        public int ToPinID => _toPinID;
 
-	public EditorLink(EditorPinIdentifier LHSPin, EditorPinIdentifier RHSPin)
-	{
-		FromNodeID = LHSPin.NodeID;
-		FromPinID = LHSPin.PinID;
-		ToNodeID = RHSPin.NodeID;
-		ToPinID = RHSPin.PinID;
-	}
+    	public EditorLink(EditorPinIdentifier lhsPin, EditorPinIdentifier rhsPin)
+    	{
+    		_fromNodeID = lhsPin.NodeID;
+    		_fromPinID = lhsPin.PinID;
+    		_toNodeID = rhsPin.NodeID;
+    		_toPinID = rhsPin.PinID;
+    	}
 
-	public int NodeID_From
-	{
-		get
-		{
-			return FromNodeID;
-		}
-	}
+        public void RenderLink(EditorGraph graph)
+    	{
+    		EditorNode fromNode = graph.GetNodeFromID(FromNodeID);
+    		EditorNode toNode = graph.GetNodeFromID(ToNodeID);
 
-	public int NodeID_To
-	{
-		get
-		{
-			return ToNodeID;
-		}
-	}
+    		if (fromNode == null || toNode == null)
+    		{
+    			return;
+    		}
 
-	public int PinID_From
-	{
-		get
-		{
-			return FromPinID;
-		}
-	}
+    		Rect fromRect = fromNode.GetPinRect(FromPinID);
+    		Rect toRect = toNode.GetPinRect(ToPinID);
 
-	public int PinID_To
-	{
-		get
-		{
-			return ToPinID;
-		}
-	}
+    		EditorGraphDrawUtils.Line(fromRect.center, toRect.center, Color.black);
+    	}
 
-	public override string ToString()
-	{
-		return NodeID_From + "." + PinID_From + " to " + NodeID_To + "." + PinID_To;
-	}
-
-	public void RenderLink(EditorGraph Graph)
-	{
-		EditorNode FromNode = Graph.GetNodeFromID(NodeID_From);
-		EditorNode ToNode = Graph.GetNodeFromID(NodeID_To);
-
-		if (FromNode == null || ToNode == null)
-		{
-			return;
-		}
-
-		Rect FromRect = FromNode.GetPinRect(PinID_From);
-		Rect ToRect = ToNode.GetPinRect(PinID_To);
-	
-		EditorGraphDrawUtils.Line(FromRect.center, ToRect.center, Color.black);
-	}
-
+        public override string ToString()
+        {
+	        return $"{FromNodeID}.{FromPinID} to {ToNodeID}.{ToPinID}";
+        }
+    }
 }
