@@ -1,381 +1,330 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using System.Reflection;
 
-public struct EditorNodeRenderData
+namespace NodeGraph
 {
-	public Rect NodeRect;
-	public float PinVerticalOffset;
-	public float InputPinHorizontalOffset;
-	public float OutputPinHorizontalOffset;
-	public float PinVerticalSpacing;
-	public float PinSize;
-}
-
-public struct EditorPinIdentifier
-{
-	public EditorPinIdentifier(int _NodeID = -1, int _PinID = -1)
+	[System.Serializable]
+	public class EditorNode
 	{
-		NodeID = _NodeID;
-		PinID = _PinID;
-	}
+		public Action OnNodeChanged;
 
-	public int NodeID;
-	public int PinID;
+		[SerializeField]
+		private List<EditorPin> _pins;
+		[SerializeField]
+		private string _name;
+		[SerializeField]
+		private Vector2 _position;
+		[SerializeField]
+		private int _id;
 
-	public override string ToString()
-	{
-		return NodeID + "." + PinID;
-	}
+		private EditorNodeRenderData _renderData;
 
-}
-
-[System.Serializable]
-public class EditorNode
-{
-
-	public delegate void EditorNodeEvent();
-	public event EditorNodeEvent OnNodeChanged;
-
-	[SerializeField] private List<EditorPin> Pins;
-	[SerializeField] private string _name;
-	[SerializeField] private Vector2 _position;
-	[SerializeField] private int _ID;
-	private EditorNodeRenderData _renderData;
-
-	public string Name
-	{
-		get
+		public string Name
 		{
-			return _name;
+			get => _name;
+			set => _name = value;
 		}
-		set
+
+		public Vector2 Position
 		{
-			_name = value;
+			get => _position;
+			set => _position = value;
 		}
-	}
 
-	public Vector2 Position
-	{
-		get
+		public int ID => _id;
+
+		public int PinCount => _pins.Count;
+
+		public EditorNode()
 		{
-			return _position;
+			Debug.LogError($"EditorNode being constructed without its graph owner as a parameter, unable to generate a unique identifier. (ID = {_id})");
+			Init();
 		}
-		set
+
+		public EditorNode(EditorGraph graph)
 		{
-			_position = value;
+			_id = graph.GenerateUniqueNodeID();
+			Init();
 		}
-	}
 
-	public int ID
-	{
-		get
+		private void Init()
 		{
-			return _ID;
+			_pins = new List<EditorPin>();
+			UpdateNodeRect();
 		}
-	}
 
-	public int PinCount
-	{
-		get
+		public EditorPin GetPin(int index)
 		{
-			return Pins.Count;
-		}
-	}
-
-	public EditorNode()
-	{
-		Debug.LogError("EditorNode being constructed without its graph owner as a parameter, unable to generate a unique identifier. (ID = "+_ID+")");
-		Init();
-	}
-
-	public EditorNode(EditorGraph Owner)
-	{
-		_ID = Owner.GenerateUniqueNodeID();
-		Init();
-	}
-
-	private void Init()
-	{
-		Pins = new List<EditorPin>();
-		UpdateNodeRect();
-	}
-
-	public EditorPin GetPin(int Index)
-	{
-		if (Index < 0 || Index >= Pins.Count)
-		{
-			Debug.LogError("Attempted to get pin of invalid index " + Index + ", (max = " + Pins.Count + ")");
-		}
-		return Pins[Index];
-	}
-
-	public Rect GetNodeRect()
-	{
-		UpdateNodeRect();
-		return _renderData.NodeRect;
-	}
-
-	public Rect GetPinRect(int ID)
-	{
-		EditorPin Pin = Pins[ID];
-		EPinLinkType LinkType = Pin.GetPinLinkType();
-
-		int TypeIndex = 1;
-		for (int Index = 0; Index < ID; ++Index)
-		{
-			if (Pins[Index].GetPinLinkType() == LinkType)
+			if (index < 0 || index >= _pins.Count)
 			{
-				++TypeIndex;
+				Debug.LogError($"Attempted to get pin of invalid index {index}, (max = {_pins.Count})");
 			}
+
+			return _pins[index];
 		}
 
-		Rect ReturnRect = new Rect();
-		Vector2 RectPosition = new Vector2();
-		ReturnRect.width = _renderData.PinSize;
-		ReturnRect.height = _renderData.PinSize;
-		RectPosition.y = _renderData.NodeRect.position.y + _renderData.PinVerticalOffset + TypeIndex * (ReturnRect.height + _renderData.PinVerticalSpacing);
-		if (LinkType == EPinLinkType.Input)
+		public Rect GetNodeRect()
 		{
-			RectPosition.x = _renderData.NodeRect.position.x + _renderData.InputPinHorizontalOffset;
-		}
-		else
-		{
-			RectPosition.x = _renderData.NodeRect.position.x + _renderData.OutputPinHorizontalOffset - _renderData.PinSize;
-		}
-		ReturnRect.position = RectPosition;
-
-		return ReturnRect;
-	}
-
-	public Rect GetPinTextRect(int ID)
-	{
-		float EstimatedCharacterWidth = 8.0f;
-		float EstimatedCharacterHeight = 16.0f;
-
-		Rect PinRect = GetPinRect(ID);
-		PinRect.width = (Pins[ID].GetPinName().Length+1) * EstimatedCharacterWidth;
-		PinRect.height = EstimatedCharacterHeight;
-		Vector2 RectPos = PinRect.position;
-		if (Pins[ID].GetPinLinkType() == EPinLinkType.Input)
-		{
-			RectPos.x += _renderData.PinSize;
-		}
-		else
-		{
-			RectPos.x -= PinRect.width - _renderData.PinSize;
-		}
-		PinRect.position = RectPos;
-		return PinRect;
-	}
-
-	public string GetPinName(int ID)
-	{
-		return Pins[ID].GetPinName();
-	}
-
-	public EditorPinIdentifier GetPinIdentifier(int ID)
-	{
-		EditorPinIdentifier Identifier = new EditorPinIdentifier();
-		Identifier.NodeID = _ID;
-		Identifier.PinID = ID;
-		return Identifier;
-	}
-
-	public void SetNodePosition(Vector2 InPos)
-	{
-		Position = InPos;
-		UpdateNodeRect();
-	}
-
-    public Vector2 GetNodePosition()
-    {
-        return Position;
-    }
-
-	public void UpdateNodeRect()
-	{
-		_renderData.PinSize = 10.0f;
-		_renderData.NodeRect.position = Position;
-		_renderData.NodeRect.width = 60.0f + GetLongestPinNameWidth(EPinLinkType.Input) + GetLongestPinNameWidth(EPinLinkType.Output);
-		_renderData.NodeRect.height = 16.0f + (_renderData.PinVerticalOffset + ((_renderData.PinSize + _renderData.PinVerticalSpacing) * Mathf.Max(GetNumPins(EPinLinkType.Input), GetNumPins(EPinLinkType.Output))));
-		_renderData.InputPinHorizontalOffset = _renderData.PinSize;
-		_renderData.OutputPinHorizontalOffset = _renderData.NodeRect.width - _renderData.PinSize;
-		_renderData.PinVerticalOffset = 16.0f;
-		_renderData.PinVerticalSpacing = 10.0f;
-	}
-
-	public void RenderNode(EditorGraph Graph, bool bIsSelected)
-	{
-		const float selectionBorder = 5.0f;
-		if (bIsSelected)
-		{
-			EditorGraphDrawUtils.DrawRect(_renderData.NodeRect.min - Vector2.one * selectionBorder, _renderData.NodeRect.max + Vector2.one * selectionBorder, Color.yellow);
-		}
-		GUI.Box(_renderData.NodeRect, " ");
-
-		for (int PinIndex = 0; PinIndex < PinCount; ++PinIndex)
-		{
-			Pins[PinIndex].RenderPin(Graph, this);
+			UpdateNodeRect();
+			return _renderData.NodeRect;
 		}
 
-		RenderNodeText();
-	}
-
-	private void RenderNodeText()
-	{
-		Rect NodeRect = _renderData.NodeRect;
-		NodeRect.height = 16.0f;
-		EditorGUI.LabelField(NodeRect, Name);
-
-		for (int PinIndex = 0; PinIndex < PinCount; ++PinIndex)
+		public Rect GetPinRect(int id)
 		{
-			EditorGUI.LabelField(GetPinTextRect(PinIndex), GetPinName(PinIndex));
-		}
-	}
+			EditorPin pin = _pins[id];
+			PinLinkType linkType = pin.GetPinLinkType();
 
-	private float GetLongestPinNameWidth(EPinLinkType LinkType)
-	{
-		float Width = 0.0f;
-		foreach (EditorPin Pin in Pins)
-		{
-			if (Pin.GetPinLinkType() == LinkType)
+			int typeIndex = 1;
+			for (int i = 0; i < id; ++i)
 			{
-				float CurrentPinWidth = EstimateStringWidth(Pin.GetPinName());
-				if (CurrentPinWidth > Width)
+				if (_pins[i].GetPinLinkType() == linkType)
 				{
-					Width = CurrentPinWidth;
+					++typeIndex;
 				}
 			}
-		}
-		return Width;
-	}
 
-	private float EstimateStringWidth(string _String)
-	{
-		return _String.Length * 8.0f;
-	}
-
-	private int AddPin(EPinLinkType _LinkType, System.Type _Type, string _Name)
-	{
-		int PinID = Pins.Count;
-		Debug.Log("Adding pin to node with ID " + ID + ", pinID = " + PinID);
-		EditorPin NewPin = new EditorPin((_Type == null) ? "null" : _Type.ToString(), _Name, ID, PinID, _LinkType);
-		Pins.Add(NewPin);
-		UpdateNodeRect();
-		return PinID;
-	}
-
-	private void ClearPins()
-	{
-		Pins.Clear();
-	}
-
-	private bool RemovePin(EditorPin _Pin)
-	{
-		return Pins.Remove(_Pin);
-	}
-
-	private int GetNumPins(EPinLinkType PinLinkType)
-	{
-		int OutNumPins = 0;
-		for (int PinIndex = 0; PinIndex < PinCount; ++PinIndex)
-		{
-			EditorPin Pin = Pins[PinIndex];
-			if (Pin.GetPinLinkType() == PinLinkType)
+			Rect returnRect = new Rect();
+			Vector2 rectPosition = new Vector2();
+			returnRect.width = _renderData.PinSize;
+			returnRect.height = _renderData.PinSize;
+			rectPosition.y = _renderData.NodeRect.position.y + _renderData.PinVerticalOffset + typeIndex * (returnRect.height + _renderData.PinVerticalSpacing);
+			if (linkType == PinLinkType.Input)
 			{
-				++OutNumPins;
-			}
-		}
-		return OutNumPins;
-	}
-
-	private void NotifyGraphChange()
-	{
-		if (OnNodeChanged != null)
-		{
-			OnNodeChanged();
-		}
-	}
-
-	public static EditorNode CreateFromFunction(EditorGraph Owner, System.Type ClassType, string Methodname, bool bHasOutput = true, bool bHasInput = true)
-	{
-		EditorNode _Node = new EditorNode(Owner);
-
-		if (ClassType != null)
-		{
-			MethodInfo methodInfo = ClassType.GetMethod(Methodname);
-
-			if (methodInfo != null)
-			{
-				_Node.Name = SanitizeName(Methodname);
-				//Debug.Log("Method name: " + _Node.Name);
-				//Debug.Log("Return type: " + methodInfo.ReturnParameter.ParameterType.ToString());
-				//Debug.Log("Return name: " + methodInfo.ReturnParameter.Name);
-				
-				if (bHasOutput)
-				{
-					_Node.AddPin(EPinLinkType.Output, null, "");
-				}
-				if (bHasInput)
-				{
-					_Node.AddPin(EPinLinkType.Input, null, "");
-				}
-
-				_Node.AddPin(EPinLinkType.Output, methodInfo.ReturnParameter.ParameterType, "Output");
-
-				ParameterInfo[] Parameters = methodInfo.GetParameters();
-				foreach (ParameterInfo Parameter in Parameters)
-				{
-					//Debug.Log("Param type: " + Parameter.ParameterType.ToString());
-					//Debug.Log("Param name: " + Parameter.Name);
-
-					_Node.AddPin(EPinLinkType.Input, Parameter.ParameterType, Parameter.Name);
-				}
+				rectPosition.x = _renderData.NodeRect.position.x + _renderData.InputPinHorizontalOffset;
 			}
 			else
 			{
-				Debug.LogError("Function '" + ClassType.ToString() + "." + Methodname + "' not found.");
+				rectPosition.x = _renderData.NodeRect.position.x + _renderData.OutputPinHorizontalOffset - _renderData.PinSize;
+			}
+
+			returnRect.position = rectPosition;
+			return returnRect;
+		}
+
+		public Rect GetPinTextRect(int id)
+		{
+			float estimatedCharacterWidth = 8.0f;
+			float estimatedCharacterHeight = 16.0f;
+
+			Rect pinRect = GetPinRect(id);
+			pinRect.width = (_pins[id].GetPinName().Length + 1) * estimatedCharacterWidth;
+			pinRect.height = estimatedCharacterHeight;
+			Vector2 rectPosition = pinRect.position;
+			if (_pins[id].GetPinLinkType() == PinLinkType.Input)
+			{
+				rectPosition.x += _renderData.PinSize;
+			}
+			else
+			{
+				rectPosition.x -= pinRect.width - _renderData.PinSize;
+			}
+
+			pinRect.position = rectPosition;
+			return pinRect;
+		}
+
+		public string GetPinName(int id)
+		{
+			return _pins[id].GetPinName();
+		}
+
+		public EditorPinIdentifier GetPinIdentifier(int id)
+		{
+			EditorPinIdentifier identifier = new EditorPinIdentifier();
+			identifier.NodeID = _id;
+			identifier.PinID = id;
+			return identifier;
+		}
+
+		public void SetNodePosition(Vector2 position)
+		{
+			Position = position;
+			UpdateNodeRect();
+		}
+
+	    public Vector2 GetNodePosition()
+	    {
+	        return Position;
+	    }
+
+		public void UpdateNodeRect()
+		{
+			_renderData.PinSize = 10.0f;
+			_renderData.NodeRect.position = Position;
+			_renderData.NodeRect.width = 60.0f + GetLongestPinNameWidth(PinLinkType.Input) + GetLongestPinNameWidth(PinLinkType.Output);
+			_renderData.NodeRect.height = 16.0f + (_renderData.PinVerticalOffset +
+			                                       (_renderData.PinSize + _renderData.PinVerticalSpacing) *
+			                                       Mathf.Max(GetNumPins(PinLinkType.Input), GetNumPins(PinLinkType.Output)));
+			_renderData.InputPinHorizontalOffset = _renderData.PinSize;
+			_renderData.OutputPinHorizontalOffset = _renderData.NodeRect.width - _renderData.PinSize;
+			_renderData.PinVerticalOffset = 16.0f;
+			_renderData.PinVerticalSpacing = 10.0f;
+		}
+
+		public void RenderNode(EditorGraph graph, bool isSelected)
+		{
+			const float SELECTION_BORDER = 5.0f;
+			if (isSelected)
+			{
+				EditorGraphDrawUtils.DrawRect(_renderData.NodeRect.min - Vector2.one * SELECTION_BORDER, _renderData.NodeRect.max + Vector2.one * SELECTION_BORDER, Color.yellow);
+			}
+
+			GUI.Box(_renderData.NodeRect, " ");
+			for (int i = 0; i < PinCount; ++i)
+			{
+				_pins[i].RenderPin(graph, this);
+			}
+
+			RenderNodeText();
+		}
+
+		private void RenderNodeText()
+		{
+			Rect nodeRect = _renderData.NodeRect;
+			nodeRect.height = 16.0f;
+			EditorGUI.LabelField(nodeRect, Name);
+
+			for (int i = 0; i < PinCount; ++i)
+			{
+				EditorGUI.LabelField(GetPinTextRect(i), GetPinName(i));
 			}
 		}
-		else
+
+		private float GetLongestPinNameWidth(PinLinkType linkType)
 		{
-			Debug.LogError("Tried to create node from function from an unknown class type.");
+			float width = 0.0f;
+			for (int i = 0; i < _pins.Count; i++)
+			{
+				EditorPin pin = _pins[i];
+				if (pin.GetPinLinkType() == linkType)
+				{
+					float currentPinWidth = EstimateStringWidth(pin.GetPinName());
+					if (currentPinWidth > width)
+					{
+						width = currentPinWidth;
+					}
+				}
+			}
+
+			return width;
 		}
 
-		_Node.NotifyGraphChange();
-		return _Node;
-	}
-
-	private static string SanitizeName(string Name)
-	{
-		string Result = "" + Name[0];
-
-		bool bWasCapital = Name[0] >= 'A' && Name[0] <= 'Z';
-		for (int i = 1; i < Name.Length; ++i)
+		private float EstimateStringWidth(string value)
 		{
-			if (Name[i] >= 'A' && Name[i] <= 'Z')
+			return value.Length * 8.0f;
+		}
+
+		private int AddPin(PinLinkType linkType, Type type, string name)
+		{
+			int pinID = _pins.Count;
+			Debug.Log($"Adding pin to node with ID {ID}, pinID = {pinID}");
+			EditorPin newPin = new EditorPin(type == null ? "null" : type.ToString(), name, ID, pinID, linkType);
+			_pins.Add(newPin);
+			UpdateNodeRect();
+			return pinID;
+		}
+
+		private void ClearPins()
+		{
+			_pins.Clear();
+		}
+
+		private bool RemovePin(EditorPin pin)
+		{
+			return _pins.Remove(pin);
+		}
+
+		private int GetNumPins(PinLinkType pinLinkType)
+		{
+			int outNumPins = 0;
+			for (int i = 0; i < PinCount; ++i)
 			{
-				if (!bWasCapital)
+				EditorPin pin = _pins[i];
+				if (pin.GetPinLinkType() == pinLinkType)
 				{
-					Result += " " + Name[i];
+					++outNumPins;
+				}
+			}
+
+			return outNumPins;
+		}
+
+		private void NotifyGraphChange()
+		{
+			OnNodeChanged?.Invoke();
+		}
+
+		public static EditorNode CreateFromFunction(EditorGraph graph, Type type, string name, bool hasOutput = true, bool hasInput = true)
+		{
+			EditorNode node = new EditorNode(graph);
+			if (type != null)
+			{
+				MethodInfo methodInfo = type.GetMethod(name);
+				if (methodInfo != null)
+				{
+					node.Name = SanitizeName(name);
+					if (hasOutput)
+					{
+						node.AddPin(PinLinkType.Output, null, "");
+					}
+					if (hasInput)
+					{
+						node.AddPin(PinLinkType.Input, null, "");
+					}
+
+					node.AddPin(PinLinkType.Output, methodInfo.ReturnParameter.ParameterType, "Output");
+
+					ParameterInfo[] parameters = methodInfo.GetParameters();
+					for (int i = 0; i < parameters.Length; i++)
+					{
+						ParameterInfo parameter = parameters[i];
+						node.AddPin(PinLinkType.Input, parameter.ParameterType, parameter.Name);
+					}
 				}
 				else
 				{
-					Result += Name[i];
+					Debug.LogError($"Function '{type.ToString()}.{name}' not found.");
 				}
-				bWasCapital = true;
 			}
 			else
 			{
-				Result += Name[i];
-				bWasCapital = false;
+				Debug.LogError("Tried to create node from function from an unknown class type.");
 			}
+
+			node.NotifyGraphChange();
+			return node;
 		}
 
-		return Result;
-	}
+		private static string SanitizeName(string name)
+		{
+			string result = "" + name[0];
+			bool wasCapital = name[0] >= 'A' && name[0] <= 'Z';
+			for (int i = 1; i < name.Length; ++i)
+			{
+				if (name[i] >= 'A' && name[i] <= 'Z')
+				{
+					if (!wasCapital)
+					{
+						result += " " + name[i];
+					}
+					else
+					{
+						result += name[i];
+					}
+					wasCapital = true;
+				}
+				else
+				{
+					result += name[i];
+					wasCapital = false;
+				}
+			}
 
+			return result;
+		}
+	}
 }
