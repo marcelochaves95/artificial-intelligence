@@ -1,134 +1,115 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
-public enum EPinLinkType
+namespace NodeGraph
 {
-	None,
-	Input,
-	Output,
-}
-
-[System.Serializable]
-public class EditorPinTypeInfo
-{
-	[SerializeField] private string Type;
-
-	public EditorPinTypeInfo(string _Type)
+	[Serializable]
+	public class EditorPin
 	{
-		Type = _Type;
-	}
+		[SerializeField]
+		private EditorPinTypeInfo _typeInfo = null;
+		[SerializeField]
+		private string _name;
+		[SerializeField]
+		private int _ownerID;
+		[SerializeField]
+		private int _id;
+		[SerializeField]
+		private PinLinkType _linkType;
 
-	public string TypeString
-	{
-		get
+		public EditorPin()
 		{
-			return Type;
+			_name = string.Empty;
+			_ownerID = -1;
+			_id = -1;
+			_linkType = PinLinkType.None;
 		}
-	}
-}
 
-[System.Serializable]
-public class EditorPin
-{
-
-	[SerializeField] private EditorPinTypeInfo TypeInfo = null;
-	[SerializeField] private string Name;
-	[SerializeField] private int OwnerID;
-	[SerializeField] private int ID;
-	[SerializeField] private EPinLinkType PinLinkType;
-
-	public EditorPin()
-	{
-		Name = "";
-		OwnerID = -1;
-		ID = -1;
-		PinLinkType = EPinLinkType.None;
-	}
-
-	public EditorPin(string _Type, string _Name, int _OwnerID, int _ID, EPinLinkType _PinLinkType)
-	{
-		TypeInfo = new EditorPinTypeInfo(_Type);
-		Name = _Name;
-		OwnerID = _OwnerID;
-		ID = _ID;
-		PinLinkType = _PinLinkType;
-	}
-
-	public override string ToString()
-	{
-		if (TypeInfo == null)
+		public EditorPin(string type, string name, int ownerID, int id, PinLinkType linkType)
 		{
-			return Name;
+			_typeInfo = new EditorPinTypeInfo(type);
+			_name = name;
+			_ownerID = ownerID;
+			_id = id;
+			_linkType = linkType;
 		}
-		return "(" + TypeInfo.TypeString + ") " + Name;
-	}
 
-	public string GetPinName()
-	{
-		return Name;
-	}
-
-	public int GetOwnerID()
-	{
-		return OwnerID;
-	}
-
-	public int GetID()
-	{
-		return ID;
-	}
-
-	public EPinLinkType GetPinLinkType()
-	{
-		return PinLinkType;
-	}
-
-	public System.Type GetPinType()
-	{
-		return System.Type.GetType(TypeInfo.TypeString);
-	}
-
-	public bool CanLinkTo(EditorPin Other)
-	{
-		if (OwnerID != Other.OwnerID)
+		public override string ToString()
 		{
-			if (PinLinkType == EPinLinkType.Input && Other.PinLinkType == EPinLinkType.Output)
+			if (_typeInfo == null)
 			{
-				if (TypeInfo == null && Other.TypeInfo == null)
+				return _name;
+			}
+
+			return $"({_typeInfo.Type}) {_name}";
+		}
+
+		public string GetPinName()
+		{
+			return _name;
+		}
+
+		public int GetOwnerID()
+		{
+			return _ownerID;
+		}
+
+		public int GetID()
+		{
+			return _id;
+		}
+
+		public PinLinkType GetPinLinkType()
+		{
+			return _linkType;
+		}
+
+		public Type GetPinType()
+		{
+			return Type.GetType(_typeInfo.Type);
+		}
+
+		public bool CanLinkTo(EditorPin other)
+		{
+			if (_ownerID != other._ownerID)
+			{
+				if (_linkType == PinLinkType.Input && other._linkType == PinLinkType.Output)
 				{
-					return true;
-				}
-				else
-				{
-					if (TypeInfo.TypeString.Equals(Other.TypeInfo.TypeString))
+					if (_typeInfo == null && other._typeInfo == null)
 					{
 						return true;
 					}
 					else
 					{
-						Debug.LogWarning("My type = " + TypeInfo.TypeString + ", their type = " + TypeInfo.TypeString);
+						if (_typeInfo.Type.Equals(other._typeInfo.Type))
+						{
+							return true;
+						}
+						else
+						{
+							Debug.LogWarning($"My type = {_typeInfo.Type}, their type = {_typeInfo.Type}");
+						}
 					}
+				}
+				else
+				{
+					Debug.LogWarning($"My Link Type = {_linkType}, other Link Type = {other._linkType}");
+					Debug.LogWarning("Mine should be input, theirs output.");
 				}
 			}
 			else
 			{
-				Debug.LogWarning("My Link Type = " + PinLinkType + ", other Link Type = " + Other.PinLinkType);
-				Debug.LogWarning("Mine should be input, theirs output.");
+				Debug.LogWarning($"{_ownerID} == {other._ownerID}");
 			}
+
+			return false;
 		}
-		else
+
+		public void RenderPin(EditorGraph graph, EditorNode node)
 		{
-			Debug.LogWarning(OwnerID + " == " + Other.OwnerID);
+			Rect pinRect = node.GetPinRect(_id);
+			GUI.Button(pinRect, " ");
 		}
 
-		return false;
 	}
-
-	public void RenderPin(EditorGraph Graph, EditorNode Node)
-	{
-		Rect PinRect = Node.GetPinRect(ID);
-		GUI.Button(PinRect, " ");
-	}
-
 }
