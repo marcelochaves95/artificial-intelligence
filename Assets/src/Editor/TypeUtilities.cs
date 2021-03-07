@@ -1,27 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
-public class TypeUtilities
+namespace NodeGraph
 {
-	private static System.Reflection.Assembly[] _assemblyList;
-
-	public static void GetAllSubclasses(System.Type _class, List<System.Type> _subclassList)
+	public class TypeUtilities
 	{
-		if (_assemblyList == null || _assemblyList.Length == 0)
-		{
-			_assemblyList = System.AppDomain.CurrentDomain.GetAssemblies();
-		}
+		private static Assembly[] _assemblyList;
 
-		_subclassList.Clear();
-
-		foreach (var assembly in _assemblyList)
+		public static void GetAllSubclasses(Type type, List<Type> types)
 		{
-			System.Type[] types = assembly.GetTypes();
-			foreach (var currentType in types)
+			if (_assemblyList == null || _assemblyList.Length == 0)
 			{
-				if (currentType.IsSubclassOf(_class))
+				_assemblyList = AppDomain.CurrentDomain.GetAssemblies();
+			}
+
+			types.Clear();
+			for (int i = 0; i < _assemblyList.Length; i++)
+			{
+				Assembly assembly = _assemblyList[i];
+				Type[] assemblyTypes = assembly.GetTypes();
+				for (int j = 0; j < assemblyTypes.Length; j++)
 				{
-					_subclassList.Add(currentType);
+					Type currentType = assemblyTypes[j];
+					if (currentType.IsSubclassOf(type))
+					{
+						types.Add(currentType);
+					}
 				}
 			}
 		}
