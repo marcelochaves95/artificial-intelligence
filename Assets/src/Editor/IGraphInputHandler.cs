@@ -6,7 +6,7 @@ namespace NodeGraph
 	{
 		void OnGraphLoaded(EditorGraph graph);
 		void MoveNode(EditorNode node, Vector2 newPosition);
-		bool LinkPins(EditorPinIdentifier pinA, EditorPinIdentifier pinB);
+		bool LinkPins(EditorPinIdentifier lhsPin, EditorPinIdentifier rhsPin);
 
 	}
 }
