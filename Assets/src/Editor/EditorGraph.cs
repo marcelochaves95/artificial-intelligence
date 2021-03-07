@@ -20,7 +20,6 @@ namespace NodeGraph
 
 		private Dictionary<int, EditorNode> _nodeMap;
 		private Dictionary<EditorPinIdentifier, EditorPin> _pinMap;
-
 		private EditorPinIdentifier _selectedElement;
 
 		public EditorPinIdentifier GetSelectedElementID()
@@ -112,8 +111,9 @@ namespace NodeGraph
 				return _nodeMap[id];
 			}
 
-			foreach (EditorNode node in _nodes)
+			for (int i = 0; i < _nodes.Count; i++)
 			{
+				EditorNode node = _nodes[i];
 				if (node.ID == id)
 				{
 					_nodeMap[id] = node;
@@ -189,13 +189,15 @@ namespace NodeGraph
 
 		public void RenderGraph()
 		{
-			foreach (EditorNode node in _nodes)
+			for (int i = 0; i < _nodes.Count; i++)
 			{
+				EditorNode node = _nodes[i];
 				node.RenderNode(this, IsNodeSelected() && node == GetNodeFromID(_selectedElement.NodeID));
 			}
 
-			foreach (EditorLink link in _links)
+			for (int i = 0; i < _links.Count; i++)
 			{
+				EditorLink link = _links[i];
 				link.RenderLink(this);
 			}
 		}
